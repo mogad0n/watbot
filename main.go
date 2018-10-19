@@ -2,17 +2,21 @@ package main
 
 import "fmt"
 import "github.com/go-irc/irc"
-import "github.com/namsral/flag"
+import flag"github.com/namsral/flag"
+
+func testHandler(c *irc.Client, m *irc.Message) {
+	fmt.Println("Client: %+v", c)
+}
 
 func main() {
-	var pass string
-	flag.String(pass)
+	pass := flag.String("pass", "", "password")
+	flag.Parse()
 	config := irc.ClientConfig {
 		Nick: "wat",
-		Pass: pass,
+		Pass: *pass,
 		User: "wat",
 		Name: "wat",
-		Handler: testHandler
+		Handler: irc.HandlerFunc(testHandler),
 	}
-	fmt.Println("Hello world")
+	fmt.Printf("Hello world %+v\n", config)
 }
