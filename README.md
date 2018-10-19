@@ -2,4 +2,4 @@
 
 watbot
 
-ported watbot from wuzelfuz
+ported watbot from wuselfuzz

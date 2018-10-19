@@ -1,0 +1,13 @@
+#!/usr/bin/python
+
+config = {
+   "prefix": "abc",
+   "currency": "abccoin",
+   "bot_nick": "abcbot",
+   "channel": "#abc",
+   "server": "irc.abc.example.com",
+   "port": 6667,
+   "ssl": False,
+   "nickserv": False,
+   "password": ""
+}
