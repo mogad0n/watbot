@@ -38,24 +38,33 @@ func (w *WatBot) HandleIrcMsg(c *irc.Client, m *irc.Message) {
 	}
 }
 
+func (w *WatBot) Admin(m *irc.Message) bool {
+	return m.Prefix.Host == "tripsit/operator/hibs"
+}
+
 func (w *WatBot) Msg(m *irc.Message) {
-	if m.Params[0] == w.Nick && m.Prefix.Host == "tripsit/operator/hibs" {
-		if "join" == m.Params[1] {
-			w.write("JOIN", "##wat")
+	if !strings.Contains(m.Prefix.Host, "tripsit") || (m.Params[0] != "##wat" && m.Params[0] != "##test" && !w.Admin(m)) {
+		return
+	}
+
+	args := strings.FieldsFunc(m.Params[1], func(c rune) bool {return c == ' '})
+
+	if w.Admin(m) {
+		// Do a special admin command and return, or continue
+		if args[0] == "imp" {
+			w.write(args[1], args[2:]...)
 		}
 	}
-	if strings.Contains(m.Prefix.Host, "tripsit") && m.Params[0] == "##wat" {
-		args := strings.FieldsFunc(m.Params[1], func(c rune) bool {return c == ' '})
-		if len(args) < 1 && args[0] != "wat" && args[0][0] != '#' {
-			return
-		}
-		if args[0][0] == '#' {
-			args[0] = args[0][1:]
-		}
-		user := strings.ToLower(m.Prefix.Name)
-		player := w.Db.User(user, m.Prefix.Host, true)
-		w.game.Msg(m, &player, args)
+
+	if len(args) < 1 && args[0] != "wat" && args[0][0] != '#' {
+		return
 	}
+	if args[0][0] == '#' {
+		args[0] = args[0][1:]
+	}
+	user := strings.ToLower(m.Prefix.Name)
+	player := w.Db.User(user, m.Prefix.Host, true)
+	w.game.Msg(m, &player, args)
 }
 
 func (w *WatBot) Run() {
