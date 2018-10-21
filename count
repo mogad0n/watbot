@@ -1,0 +1,2 @@
+wc -l osrc/watbot_*.py
+wc -l *.go wat/*.go

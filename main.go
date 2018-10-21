@@ -2,21 +2,28 @@ package main
 
 import "fmt"
 import "github.com/go-irc/irc"
-import flag"github.com/namsral/flag"
+import "github.com/namsral/flag"
+import "crypto/tls"
 
-func testHandler(c *irc.Client, m *irc.Message) {
-	fmt.Println("Client: %+v", c)
-}
+import "git.circuitco.de/self/watbot/wat"
 
 func main() {
 	pass := flag.String("pass", "", "password")
 	flag.Parse()
 	config := irc.ClientConfig {
-		Nick: "wat",
+		Nick: "watt",
 		Pass: *pass,
-		User: "wat",
+		User: "wat/tripsit",
 		Name: "wat",
-		Handler: irc.HandlerFunc(testHandler),
 	}
-	fmt.Printf("Hello world %+v\n", config)
+	tcpConf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	conn, err := tls.Dial("tcp", "127.0.0.1:9696", tcpConf)
+	if err != nil {
+		fmt.Println("err " + err.Error())
+		return
+	}
+	wwat := wat.NewWatBot(&config, conn)
+	wwat.Run()
 }

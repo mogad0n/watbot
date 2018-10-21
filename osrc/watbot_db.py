@@ -31,7 +31,7 @@ class WatbotDB:
                      "  timestamp  integer,"
                      "  balance    integer,"
                      "  log        text,"
-                     "  foreign key(nickname) references coins(nickname)"
+                     "  foreign key(nickname) references players(nickname)"
                      ")"
       )
 
