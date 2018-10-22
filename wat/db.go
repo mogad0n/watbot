@@ -14,14 +14,14 @@ type Player struct {
 	Watting int64
 	Anarchy int64
 	Trickery int64
-	Coins int64
+	Coins int64 `gorm:"default:'100'"`
 	Health int64
 	LastMined int64
 	LastRested int64
 }
 
 func (p *Player) Conscious() bool {
-	return true
+	return (p.Health > 0)
 }
 
 func (p *Player) Level(xp int64) int64 {
@@ -89,6 +89,6 @@ func (w *WatDb) Update(upd interface{}) {
 
 func (w *WatDb) TopTen() []Player {
 	var user = make([]Player, 10)
-	w.db.Limit(10).Find(&user)
+	w.db.Limit(10).Order("coins desc").Find(&user)
 	return user
 }

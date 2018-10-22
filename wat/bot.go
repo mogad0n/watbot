@@ -15,6 +15,12 @@ type WatBot struct {
 	Nick string
 }
 
+var allowedChannels = []string {
+	"##wat",
+	"##test",
+	"##sweden",
+}
+
 func NewWatBot(config *irc.ClientConfig, serverConn *tls.Conn) *WatBot {
 	wat := WatBot{conn:serverConn, Nick:config.Nick}
 	wat.Db = NewWatDb()
@@ -42,8 +48,17 @@ func (w *WatBot) Admin(m *irc.Message) bool {
 	return m.Prefix.Host == "tripsit/operator/hibs"
 }
 
+func (w *WatBot) AllowedChannel(c string) bool {
+	for _, allowed := range allowedChannels {
+		if c == allowed {
+			return true
+		}
+	}
+	return false
+}
+
 func (w *WatBot) Msg(m *irc.Message) {
-	if !strings.Contains(m.Prefix.Host, "tripsit") || (m.Params[0] != "##wat" && m.Params[0] != "##test" && !w.Admin(m)) {
+	if !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
 		return
 	}
 
@@ -56,7 +71,7 @@ func (w *WatBot) Msg(m *irc.Message) {
 		}
 	}
 
-	if len(args) < 1 && args[0] != "wat" && args[0][0] != '#' {
+	if len(args) < 1 || (args[0] != "wat" && args[0][0] != '#') {
 		return
 	}
 	if args[0][0] == '#' {
