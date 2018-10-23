@@ -58,25 +58,47 @@ func (w *WatBot) AllowedChannel(c string) bool {
 }
 
 func (w *WatBot) Msg(m *irc.Message) {
-	if !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
+	// bail out if you're not yves, if you're not tripsit or if you're not in an allowed channel
+	// but if you're an admin you can do whatever
+	if m.Prefix.Host == "tripsit/user/Yves" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
 		return
 	}
+
+	if len(m.Params[1]) == 0 {
+		return
+	}
+
 
 	args := strings.FieldsFunc(m.Params[1], func(c rune) bool {return c == ' '})
 
+	if len(args) == 0 {
+		return
+	}
+
 	if w.Admin(m) {
 		// Do a special admin command and return, or continue
-		if args[0] == "imp" {
+		if args[0] == "imp" && len(args) > 2 {
 			w.write(args[1], args[2:]...)
+			return
 		}
 	}
 
-	if len(args) < 1 || (args[0] != "wat" && args[0][0] != '#') {
+	// strip offline message prefix from znc for handling offline buffer
+	if args[0][0] == '[' && len(args) > 1 {
+		args = args[1:]
+	}
+
+	// check if command char (or something weird) is present
+	if args[0] != "wat" && args[0][0] != '#' {
 		return
 	}
+
+
+	// clean input
 	if args[0][0] == '#' {
 		args[0] = args[0][1:]
 	}
+
 	user := strings.ToLower(m.Prefix.Name)
 	player := w.Db.User(user, m.Prefix.Host, true)
 	w.game.Msg(m, &player, args)
