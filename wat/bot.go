@@ -35,7 +35,6 @@ func CleanNick(nick string) string {
 }
 
 func (w *WatBot) HandleIrcMsg(c *irc.Client, m *irc.Message) {
-	fmt.Println(m)
 	switch cmd := m.Command; cmd {
 	case "PING":
 		w.write("PONG", m.Params[0])
@@ -64,11 +63,12 @@ func (w *WatBot) Msg(m *irc.Message) {
 		return
 	}
 
+	// make sure there's actually some text to process
 	if len(m.Params[1]) == 0 {
 		return
 	}
 
-
+	// fieldsfunc allows you to obtain rune separated fields/args
 	args := strings.FieldsFunc(m.Params[1], func(c rune) bool {return c == ' '})
 
 	if len(args) == 0 {
@@ -76,9 +76,13 @@ func (w *WatBot) Msg(m *irc.Message) {
 	}
 
 	if w.Admin(m) {
-		// Do a special admin command and return, or continue
+		// allow impersonation of the robot from anywhere
 		if args[0] == "imp" && len(args) > 2 {
-			w.write(args[1], args[2:]...)
+			if args[1] == "PRIVMSG" {
+				w.write(args[1], strings.Join(args[2:], " "))
+			} else {
+				w.write(args[1], args[2:]...)
+			}
 			return
 		}
 	}
@@ -108,7 +112,7 @@ func (w *WatBot) Run() {
 	defer w.conn.Close()
 	err := w.client.Run()
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("Error returned while running client: " + err.Error())
 	}
 }
 

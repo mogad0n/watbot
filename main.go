@@ -1,15 +1,17 @@
 package main
 
 import "fmt"
+import "crypto/tls"
+
 import "github.com/go-irc/irc"
 import "github.com/namsral/flag"
-import "crypto/tls"
 
 import "git.circuitco.de/self/watbot/wat"
 
 func main() {
 	pass := flag.String("pass", "", "password")
 	flag.Parse()
+	fmt.Printf("PASS len %d\n", len(*pass))
 	config := irc.ClientConfig {
 		Nick: "watt",
 		Pass: *pass,

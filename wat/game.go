@@ -23,12 +23,13 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	g.commands = map[string](func(*Player,[]string)(string)) {
 		"wat": g.megaWat,
 		"watch": g.Watch,
-		"watcoin": g.Balance,
+		"coins": g.Balance,
 		"send": g.Send,
 		"rest": g.Rest,
 		"leech": g.Leech,
 		"roll": g.Roll,
 		"dice": g.Dice,
+		"mine": g.Mine,
 	}
 	g.lifeCommands = map[string](func(*Player, []string)(string)) {
 		"steal": g.Steal,
@@ -53,6 +54,7 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 	if g.commands[fields[0]] != nil {
 		reply = g.commands[fields[0]](player, fields)
 	} else {
+		// one liners
 		switch strings.ToLower(fields[0]) {
 		case "rules":
 			reply = rules
@@ -60,12 +62,9 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 			reply = helpText
 		case "topten":
 			reply = fmt.Sprintf("%s holders: %s", currency, g.TopTen())
-		case "mine":
-			reply = g.Mine(player)
 		}
 	}
 	if g.lifeCommands[fields[0]] != nil {
-		// Nothing was handled. Maybe this is an action that requires consciousness.
 		if !player.Conscious() {
 			reply = unconscious
 		} else {
@@ -104,7 +103,7 @@ func (g *WatGame) Roll(player *Player, fields []string) string {
 	}
 	amount, e := g.Int(fields[1])
 	if e != nil {
-		return "wat kinda numba is that"
+		return "wat kinda number is that"
 	}
 	if amount > player.Coins {
 		return "wat? brokeass"
@@ -132,15 +131,17 @@ func (g *WatGame) Punch(player *Player, fields []string) string {
 	}
 	chance := rand.Int63n(6)+1
 	dmg := rand.Int63n(6)+1
-	ret := fmt.Sprintf("%s rolls a d6 to punch %s: It's a %d! %s ", player.Nick, target.Nick, chance, player.Nick)
-	if chance <3 {
+	ret := fmt.Sprintf("%s rolls a d6... %s ", player.Nick, player.Nick)
+	if chance > 3 {
 		dmg += player.Level(player.Anarchy)
-		ret += fmt.Sprintf("hits %s right in the torso for %d points of damage!", target.Nick, dmg)
+		ret += fmt.Sprintf("hits %s for %d points of damage!", target.Nick, dmg)
 		target.Health -= dmg
 		g.db.Update(target)
+		if target.Health <= 0 {
+			ret += target.Nick + " has fallen unconscious."
+		}
 	} else {
-		dmg += target.Anarchy
-		ret += fmt.Sprintf("fumbles, and punches themselves in confusion! %d self-damage! ", dmg)
+		ret += fmt.Sprintf("fumbles, and punches themselves in confusion! %d self-damage. ", dmg)
 		player.Health -= dmg
 		if player.Health <= 0 {
 			ret += player.Nick + " has fallen unconscious."
@@ -174,7 +175,6 @@ func (g *WatGame) Frame(player *Player, fields []string) string {
 		ret += fmt.Sprintf("You frame %s for a minor crime. They pay me %d.", target.Nick, amount)
 		player.Anarchy += 1
 		target.Coins -= amount
-		// bot gets coins
 	} else {
 		ret += fmt.Sprintf("You were caught and pay them %d. %s gets the rest.", (amount/2), g.bot.Nick)
 		player.Coins -= amount
@@ -203,19 +203,21 @@ func (g *WatGame) Steal(player *Player, fields []string) string {
 		return err
 	}
 	if target.Coins < amount {
-		return fmt.Sprintf("wat? %s is a poor fuck and doesn't have that much to steal.", target.Nick)
+		return fmt.Sprintf("wat? %s is poor and doesn't have that much to steal. (%d %s)", target.Nick, target.Coins, currency)
 	}
 	n := rand.Int63n(6)+1
 	ret := fmt.Sprintf("%s is trying to steal %d %s from %s... ", player.Nick, amount, currency, target.Nick)
 	if n < 3 {
-		ret += "! You snuck it! Sneaky bastard!"
+		ret += "You did it! Sneaky bastard!"
 		player.Coins += amount
 		player.Anarchy += 1
 		target.Coins -= amount
 		g.db.Update(target)
 	} else {
-		ret += fmt.Sprintf("... You were caught and I took %d %s from your pocket.", (amount*2), currency)
+		ret += fmt.Sprintf("You were caught and I took %d %s from your pocket.", (amount*2), currency)
 		player.Coins -= amount*2
+		g.me.Coins += amount*2
+		g.db.Update(g.me)
 	}
 	g.db.Update(player)
 	return ret
@@ -227,7 +229,7 @@ func (g *WatGame) GetTarget(player, target string) (*Player, string) {
 		return nil, "Who? wat?"
 	}
 	if t.Nick == player {
-		return nil, "You can't do that to yourself, dummy."
+		return nil, "You can't do that to yourself, silly."
 	}
 	return &t, ""
 }
@@ -235,11 +237,11 @@ func (g *WatGame) GetTarget(player, target string) (*Player, string) {
 func (g *WatGame) Leech(player *Player, fields []string) string {
 	divisor := int64(10)
 	if len(fields) < 3 {
-		return fmt.Sprintf("leech <nick> <%s> - using your wealth, you steal the life force of another player. this will probably backfire and kill you.", currency)
+		return fmt.Sprintf("leech <nick> <%s> - using your wealth, you steal the life force of another player", currency)
 	}
 	amount, er := g.Int(fields[2])
 	if amount < divisor {
-		return fmt.Sprintf("wat?? can't try to leech with less than %d %s, what do you think this is, free?", divisor, currency)
+		return fmt.Sprintf("wat? its %d %s for 1 hp", divisor, currency)
 	}
 	if player.Coins < amount || er != nil {
 		return "wat great fortune do you think you have? poor wats shouldn't be doing this, wat a waste..."
@@ -255,7 +257,8 @@ func (g *WatGame) Leech(player *Player, fields []string) string {
 	if r < 5 {
 		target.Health -= hpDown
 		player.Health += hpDown
-		reply += fmt.Sprintf("The deal is done, you schlorped %d HP from %s. They now have %d HP, you have %d.", hpDown, target.Nick, target.Health, player.Health)
+		player.Anarchy += 1
+		reply += fmt.Sprintf("The deal is done, you took %d HP from %s. They now have %d HP, you have %d.", hpDown, target.Nick, target.Health, player.Health)
 	} else {
 		reply += "The gods do not smile upon you this waturday. Your money vanishes and nothing happens."
 	}
@@ -263,7 +266,7 @@ func (g *WatGame) Leech(player *Player, fields []string) string {
 }
 
 func (g *WatGame) Rest(player *Player, fields []string) string {
-	minRest := int64(86400)
+	minRest := int64(43200)
 	delta := time.Now().Unix() - player.LastRested
 	ret := ""
 	if player.LastRested == 0 {
@@ -272,7 +275,7 @@ func (g *WatGame) Rest(player *Player, fields []string) string {
 	} else if delta < minRest {
 		ret = fmt.Sprintf("wat were you thinking, sleeping at a time like this (%d until next rest)", minRest-delta)
 	} else {
-		value := rand.Int63n(20)+1
+		value := rand.Int63n(10)+1
 		ret = fmt.Sprintf("wat a nap - have back a random amount of hitpoints (this time it's %d)", value)
 	}
 	player.LastRested = time.Now().Unix()
@@ -294,7 +297,7 @@ func (g *WatGame) Send(player *Player, fields []string) string {
 		return fields[2] + " is not an integer, wat?"
 	}
 	if int64(amount) > player.Coins {
-		return "wat? you poor fuck, you don't have enough!"
+		return "wat? you're too poor!"
 	}
 	target, str := g.GetTarget(player.Nick, fields[1])
 	if target == nil {
@@ -304,10 +307,10 @@ func (g *WatGame) Send(player *Player, fields []string) string {
 	target.Coins += int64(amount)
 	g.db.Update(player)
 	g.db.Update(target)
-	return fmt.Sprintf("%s sent %s %d %s", player.Nick, target.Nick, amount, currency)
+	return fmt.Sprintf("%s sent %s %d %s has %d watcoin, %s has %d watcoin ", player.Nick, target.Nick, amount, currency, player.Nick, player.Coins, target.Nick, target.Coins)
 }
 
-func (g *WatGame) Mine(player *Player) string {
+func (g *WatGame) Mine(player *Player, _ []string) string {
 	delta := time.Now().Unix() - player.LastMined
 	if delta < 1800 {
 				return fmt.Sprintf("wat? 2 soon (%d)", delta)
@@ -375,6 +378,7 @@ func PrintTwo(nick string, value int64) string {
 func (g *WatGame) megaWat(player *Player, _ []string) string {
 	mega := rand.Int63n(1000000)+1
 	kilo := rand.Int63n(1000)+1
+	ten := rand.Int63n(10)+1
 	reply := ""
 	if mega == 23 {
 		player.Coins += 1000000
@@ -383,6 +387,10 @@ func (g *WatGame) megaWat(player *Player, _ []string) string {
 	if kilo == 5 {
 		player.Coins += 1000
 		reply = fmt.Sprintf("OMGWAT! %s has won the KiloWat lottery and gains 1000 %s!", player.Nick, currency)
+	}
+	if ten == 10 {
+		player.Coins += 10
+		reply = fmt.Sprintf("%s won the regular wattery. This one only pays 10 %s.", player.Nick, currency)
 	}
 	player.Watting += 1
 	g.db.Update(player)
