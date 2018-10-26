@@ -19,6 +19,7 @@ var allowedChannels = []string {
 	"##wat",
 	"##test",
 	"##sweden",
+	"##freedom",
 }
 
 func NewWatBot(config *irc.ClientConfig, serverConn *tls.Conn) *WatBot {
@@ -77,9 +78,9 @@ func (w *WatBot) Msg(m *irc.Message) {
 
 	if w.Admin(m) {
 		// allow impersonation of the robot from anywhere
-		if args[0] == "imp" && len(args) > 2 {
-			if args[1] == "PRIVMSG" {
-				w.write(args[1], strings.Join(args[2:], " "))
+		if (args[0] == "imp" || args[0] == "imps") && len(args) > 2 {
+			if args[0] == "imps" {
+				w.write(args[1], args[2], strings.Join(args[3:], " "))
 			} else {
 				w.write(args[1], args[2:]...)
 			}
@@ -96,7 +97,6 @@ func (w *WatBot) Msg(m *irc.Message) {
 	if args[0] != "wat" && args[0][0] != '#' {
 		return
 	}
-
 
 	// clean input
 	if args[0][0] == '#' {

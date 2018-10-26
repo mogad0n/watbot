@@ -18,6 +18,12 @@ type Player struct {
 	Health int64
 	LastMined int64
 	LastRested int64
+	CoinsLost int64
+}
+
+func (p *Player) LoseCoins(coins int64) {
+	p.Coins -= coins
+	p.CoinsLost += coins
 }
 
 func (p *Player) Conscious() bool {
