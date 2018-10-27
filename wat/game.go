@@ -142,7 +142,7 @@ func (g *WatGame) Punch(player *Player, fields []string) string {
 	ret := fmt.Sprintf("%s rolls a d6... %s ", player.Nick, player.Nick)
 	if chance > 3 {
 		dmg += player.Level(player.Anarchy)
-		ret += fmt.Sprintf("hits %s for %d points of damage!", target.Nick, dmg)
+		ret += fmt.Sprintf("hits %s for %d points of damage! ", target.Nick, dmg)
 		target.Health -= dmg
 		g.db.Update(target)
 		if target.Health <= 0 {
@@ -267,6 +267,8 @@ func (g *WatGame) Leech(player *Player, fields []string) string {
 		player.Health += hpDown
 		player.Anarchy += 1
 		reply += fmt.Sprintf("The deal is done, you took %d HP from %s. They now have %d HP, you have %d.", hpDown, target.Nick, target.Health, player.Health)
+		g.db.Update(target)
+		g.db.Update(player)
 	} else {
 		reply += "The gods do not smile upon you this waturday. Your money vanishes and nothing happens."
 	}
@@ -323,12 +325,12 @@ func (g *WatGame) Send(player *Player, fields []string) string {
 
 func (g *WatGame) Mine(player *Player, _ []string) string {
 	delta := time.Now().Unix() - player.LastMined
-	if delta < 1800 {
+	if delta < 600 {
 				return fmt.Sprintf("wat? 2 soon. u earn more when u wait long (%d)", delta)
 	}
 	value := int64(0)
 	if delta < 36000 {
-		value = delta/1800
+		value = delta/600
 	} else if delta < 86400 {
 		value = 10
 	} else if delta < 2592000 {
