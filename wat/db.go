@@ -2,23 +2,24 @@ package wat
 
 import (
 	"time"
+
 	"github.com/jinzhu/gorm"
-	_"github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 import "fmt"
 
 type Player struct {
 	gorm.Model
-	Nick string
-	Host string
-	Watting int64
-	Anarchy int64
-	Trickery int64
-	Coins int64 `gorm:"default:'100'"`
-	Health int64
-	LastMined int64
+	Nick       string
+	Host       string
+	Watting    int64
+	Anarchy    int64
+	Trickery   int64
+	Coins      int64 `gorm:"default:'100'"`
+	Health     int64
+	LastMined  int64
 	LastRested int64
-	CoinsLost int64
+	CoinsLost  int64
 }
 
 func (p *Player) LoseCoins(coins int64) {
@@ -32,9 +33,9 @@ func (p *Player) Conscious() bool {
 
 func (p *Player) Level(xp int64) int64 {
 	if xp < 100 {
-		return xp/10
+		return xp / 10
 	} else if xp < 900 {
-		return 10 + (xp/100)
+		return 10 + (xp / 100)
 	} else {
 		return 99
 	}
@@ -42,21 +43,21 @@ func (p *Player) Level(xp int64) int64 {
 
 type Ledger struct {
 	PlayerId uint `gorm:"primary_key"`
-	Time int64
-	Balance int64
-	Log string
+	Time     int64
+	Balance  int64
+	Log      string
 }
 
 type Item struct {
 	PlayerId uint
-	Name string `gorm:"primary_key"`
-	Price int64
+	Name     string `gorm:"primary_key"`
+	Price    int64
 }
 
 type PlayerItem struct {
 	PlayerId uint
-	ItemId int
-	Count int
+	ItemId   int
+	Count    int
 }
 
 type WatDb struct {
@@ -89,8 +90,11 @@ func (w *WatDb) User(nick, host string, create bool) Player {
 	return player
 }
 
-func (w *WatDb) Update(upd interface{}) {
-	w.db.Save(upd)
+func (w *WatDb) Update(upd ...interface{}) {
+	for _, u := range upd {
+		fmt.Printf("Updating %+v\n", u)
+		w.db.Save(u)
+	}
 }
 
 func (w *WatDb) TopTen() []Player {

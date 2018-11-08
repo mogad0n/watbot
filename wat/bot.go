@@ -1,21 +1,22 @@
 package wat
 
 import (
-	"github.com/go-irc/irc"
 	"crypto/tls"
 	"fmt"
 	"strings"
+
+	"github.com/go-irc/irc"
 )
 
 type WatBot struct {
 	client *irc.Client
-	conn *tls.Conn
-	game *WatGame
-	Db *WatDb
-	Nick string
+	conn   *tls.Conn
+	game   *WatGame
+	Db     *WatDb
+	Nick   string
 }
 
-var allowedChannels = []string {
+var allowedChannels = []string{
 	"##wat",
 	"##test",
 	"##sweden",
@@ -23,7 +24,7 @@ var allowedChannels = []string {
 }
 
 func NewWatBot(config *irc.ClientConfig, serverConn *tls.Conn) *WatBot {
-	wat := WatBot{conn:serverConn, Nick:config.Nick}
+	wat := WatBot{conn: serverConn, Nick: config.Nick}
 	wat.Db = NewWatDb()
 	wat.game = NewWatGame(&wat, wat.Db)
 	config.Handler = irc.HandlerFunc(wat.HandleIrcMsg)
@@ -32,7 +33,7 @@ func NewWatBot(config *irc.ClientConfig, serverConn *tls.Conn) *WatBot {
 }
 
 func CleanNick(nick string) string {
-	return string(nick[0])+"\u200c"+nick[1:]
+	return string(nick[0]) + "\u200c" + nick[1:]
 }
 
 func (w *WatBot) HandleIrcMsg(c *irc.Client, m *irc.Message) {
@@ -60,7 +61,7 @@ func (w *WatBot) AllowedChannel(c string) bool {
 func (w *WatBot) Msg(m *irc.Message) {
 	// bail out if you're not yves, if you're not tripsit or if you're not in an allowed channel
 	// but if you're an admin you can do whatever
-	if m.Prefix.Host == "tripsit/user/Yves" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
+	if m.Prefix.Host == "tripsit/user/creatonez" || m.Prefix.Host == "tripsit/user/Yves" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
 		return
 	}
 
@@ -70,7 +71,7 @@ func (w *WatBot) Msg(m *irc.Message) {
 	}
 
 	// fieldsfunc allows you to obtain rune separated fields/args
-	args := strings.FieldsFunc(m.Params[1], func(c rune) bool {return c == ' '})
+	args := strings.FieldsFunc(m.Params[1], func(c rune) bool { return c == ' ' })
 
 	if len(args) == 0 {
 		return
@@ -135,6 +136,6 @@ func (w *WatBot) reply(s *irc.Message, r string) {
 func (w *WatBot) write(cmd string, params ...string) {
 	w.client.WriteMessage(&irc.Message{
 		Command: cmd,
-		Params: params,
+		Params:  params,
 	})
 }
