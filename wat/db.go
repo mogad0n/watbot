@@ -15,14 +15,14 @@ type Player struct {
 	Watting    int64
 	Anarchy    int64
 	Trickery   int64
-	Coins      int64 `gorm:"default:'100'"`
+	Coins      uint64 `gorm:"default:'100'"`
 	Health     int64
 	LastMined  int64
 	LastRested int64
-	CoinsLost  int64
+	CoinsLost  uint64
 }
 
-func (p *Player) LoseCoins(coins int64) {
+func (p *Player) LoseCoins(coins uint64) {
 	p.Coins -= coins
 	p.CoinsLost += coins
 }
@@ -95,6 +95,12 @@ func (w *WatDb) Update(upd ...interface{}) {
 		fmt.Printf("Updating %+v\n", u)
 		w.db.Save(u)
 	}
+}
+
+func (w *WatDb) TopLost() []Player {
+	var user = make([]Player, 10)
+	w.db.Limit(10).Order("coins_lost desc").Find(&user)
+	return user
 }
 
 func (w *WatDb) TopTen() []Player {

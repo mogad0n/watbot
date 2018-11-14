@@ -61,7 +61,7 @@ func (w *WatBot) AllowedChannel(c string) bool {
 func (w *WatBot) Msg(m *irc.Message) {
 	// bail out if you're not yves, if you're not tripsit or if you're not in an allowed channel
 	// but if you're an admin you can do whatever
-	if m.Prefix.Host == "tripsit/user/creatonez" || m.Prefix.Host == "tripsit/user/Yves" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
+	if m.Prefix.Host == "tripsit/user/creatonez" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
 		return
 	}
 
