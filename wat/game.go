@@ -19,6 +19,10 @@ type WatGame struct {
 	lifeCommands map[string](func(*Player, []string) string)
 }
 
+var currency = "watcoin"
+var currencys = "watcoins"
+var unconscious = "wat, your hands fumble and fail you. try resting, weakling."
+
 func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	g := WatGame{bot, db, Player{}, nil, nil}
 	g.me = g.db.User(bot.Nick, "tripsit/user/"+bot.Nick, true)
@@ -46,25 +50,16 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	return &g
 }
 
-var currency = "watcoin"
-var currencys = "watcoins"
-var unconscious = "wat, your hands fumble and fail you. try resting, weakling."
-var helpText = fmt.Sprintf("coins <nick>, watch <nick>, topten, mine, send <nick> <%s>, roll <%s>, steal <nick> <%s>, frame <nick> <%s>, punch <nick>", currency, currency, currency, currency)
-
-//var rules = "A new account is created with 5 hours time credit. Mining exchanges time credit for %s: 1-10h: 1 p/h; >10h: 10 p/h; >1 day: 50 p/h; >1 month: 1000 p/h."
-
-// missing
-// invent, create, give inventory
-
 func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
+	command := strings.ToLower(fields[0])
 	reply := ""
-	if g.commands[fields[0]] != nil {
-		reply = g.commands[fields[0]](player, fields)
+	if g.commands[command] != nil {
+		reply = g.commands[command](player, fields)
 	} else {
 		// one liners
-		switch strings.ToLower(fields[0]) {
+		switch strings.ToLower(command) {
 		case "help":
-			reply = helpText
+			reply = g.help()
 		case "toplost":
 			reply = fmt.Sprintf("%s losers: %s", currency, g.TopLost())
 		case "topten":
@@ -75,14 +70,31 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 			reply = "I LOVE BUTTS"
 		}
 	}
-	if g.lifeCommands[fields[0]] != nil {
+	if g.lifeCommands[command] != nil {
 		if !player.Conscious() {
 			reply = unconscious
 		} else {
-			reply = g.lifeCommands[fields[0]](player, fields)
+			reply = g.lifeCommands[command](player, fields)
 		}
 	}
 	g.bot.reply(m, reply)
+}
+
+func (g *WatGame) help() string {
+	ret := ""
+	for cmd, _ := range g.commands {
+		if len(ret) > 0 {
+			ret += ", "
+		}
+		ret += cmd
+	}
+	for cmd, _ := range g.lifeCommands {
+		if len(ret) > 0 {
+			ret += ", "
+		}
+		ret += cmd
+	}
+	return ret
 }
 
 func (g *WatGame) RandInt(max int64) uint64 {
@@ -193,19 +205,24 @@ func (g *WatGame) Punch(player *Player, fields []string) string {
 	chance := g.RandInt(6) + 1
 	dmg := g.RandInt(6) + 1
 	ret := fmt.Sprintf("%s rolls a d6... %s ", player.Nick, player.Nick)
+	dmg += uint64(player.Level(player.Anarchy))
 	if chance > 3 {
-		dmg += uint64(player.Level(player.Anarchy))
 		ret += fmt.Sprintf("hits %s for %d points of damage! ", target.Nick, dmg)
 		target.Health -= int64(dmg)
 		g.db.Update(target)
 		if target.Health <= 0 {
 			ret += target.Nick + " has fallen unconscious."
+		} else {
+			ret += fmt.Sprintf("%s has %dHP left", target.Nick, target.Health)
 		}
 	} else {
 		ret += fmt.Sprintf("fumbles, and punches themselves in confusion! %d self-damage. ", dmg)
-		player.Health -= int64(dmg)
+		player.Health -= int64(dmg * 2)
+		player.Anarchy -= 1
 		if player.Health <= 0 {
 			ret += player.Nick + " has fallen unconscious."
+		} else {
+			ret += fmt.Sprintf("%s has %dHP left", player.Nick, player.Health)
 		}
 		g.db.Update(player)
 	}
@@ -348,7 +365,11 @@ func (g *WatGame) Rest(player *Player, fields []string) string {
 }
 
 func (g *WatGame) Bench(player *Player, fields []string) string {
-	return "meh"
+	delta := g.db.LastActed(player, Action_Lift)
+	minTime := int64(2400)
+	if delta != 0 && delta-time.Now().Unix() < minTime {
+		return "you're tired. no more lifting for now."
+	}
 	weight := g.RandInt(370) + 50
 	reps := g.RandInt(10)
 	value := int64(0)
@@ -364,6 +385,7 @@ func (g *WatGame) Bench(player *Player, fields []string) string {
 		value = 10
 		reply += "four twenty blaze it bro! "
 	}
+	g.db.Act(player, Action_Lift)
 	player.Anarchy += value
 	g.db.Update(player)
 	reply += fmt.Sprintf("ur %d stronger lol", value)

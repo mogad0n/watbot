@@ -1,12 +1,12 @@
 package wat
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
-import "fmt"
 
 type Player struct {
 	gorm.Model
@@ -20,6 +20,12 @@ type Player struct {
 	LastMined  int64
 	LastRested int64
 	CoinsLost  uint64
+}
+
+type Action struct {
+	PlayerId  uint       `gorm:"primary_key;auto_increment:false"`
+	Type      ActionType `gorm:"primary_key;auto_increment:false"`
+	Performed int64
 }
 
 func (p *Player) LoseCoins(coins uint64) {
@@ -41,25 +47,6 @@ func (p *Player) Level(xp int64) int64 {
 	}
 }
 
-type Ledger struct {
-	PlayerId uint `gorm:"primary_key"`
-	Time     int64
-	Balance  int64
-	Log      string
-}
-
-type Item struct {
-	PlayerId uint
-	Name     string `gorm:"primary_key"`
-	Price    int64
-}
-
-type PlayerItem struct {
-	PlayerId uint
-	ItemId   int
-	Count    int
-}
-
 type WatDb struct {
 	db *gorm.DB
 }
@@ -71,7 +58,7 @@ func NewWatDb() *WatDb {
 	if err != nil {
 		panic(err)
 	}
-	w.db.AutoMigrate(&Player{}, &Ledger{}, &Item{}, &PlayerItem{})
+	w.db.AutoMigrate(&Action{}, &Player{})
 	return &w
 }
 
@@ -85,7 +72,6 @@ func (w *WatDb) User(nick, host string, create bool) Player {
 		player.Host = host
 		w.db.Create(&player)
 		w.db.First(&player, "nick = ? or host = ?", nick, host)
-		w.db.Create(&Ledger{player.Model.ID, time.Now().Unix(), 0, "creation"})
 	}
 	return player
 }
@@ -97,6 +83,30 @@ func (w *WatDb) Update(upd ...interface{}) {
 	}
 }
 
+const (
+	Action_Mine ActionType = 1
+	Action_Rest ActionType = 2
+	Action_Lift ActionType = 3
+)
+
+type ActionType int
+
+func (w *WatDb) LastActed(player *Player, actionType ActionType) int64 {
+	action := Action{}
+	w.db.First(&action, "type = ? AND player_id = ?", actionType, player.Model.ID)
+	return action.Performed
+}
+
+func (w *WatDb) Act(player *Player, actionType ActionType) {
+	action := Action{player.Model.ID, actionType, time.Now().Unix()}
+	if w.db.First(&action, "type = ? AND player_id = ?", actionType, player.ID).RecordNotFound() {
+		w.db.Create(&action)
+	} else {
+		action.Performed = time.Now().Unix()
+		w.Update(&action)
+	}
+}
+
 func (w *WatDb) TopLost() []Player {
 	var user = make([]Player, 10)
 	w.db.Limit(10).Order("coins_lost desc").Find(&user)
@@ -105,6 +115,6 @@ func (w *WatDb) TopLost() []Player {
 
 func (w *WatDb) TopTen() []Player {
 	var user = make([]Player, 10)
-	w.db.Limit(10).Order("coins desc").Find(&user)
+	w.db.Where("nick != 'watt'").Limit(10).Order("coins desc").Find(&user)
 	return user
 }
