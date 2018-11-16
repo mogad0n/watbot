@@ -364,12 +364,20 @@ func (g *WatGame) Rest(player *Player, fields []string) string {
 	return ret
 }
 
+func (g *WatGame) CanAct(player *Player, action ActionType, minTime int64) bool {
+	delta := g.db.LastActed(player, action)
+	if minTime != 0 && delta != 0 && time.Now().Unix()-delta < minTime {
+		return false
+	}
+	return true
+}
+
 func (g *WatGame) Bench(player *Player, fields []string) string {
-	delta := g.db.LastActed(player, Action_Lift)
 	minTime := int64(2400)
-	if delta != 0 && delta-time.Now().Unix() < minTime {
+	if !g.CanAct(player, Action_Lift, minTime) {
 		return "you're tired. no more lifting for now."
 	}
+	return "ok"
 	weight := g.RandInt(370) + 50
 	reps := g.RandInt(10)
 	value := int64(0)
@@ -393,6 +401,9 @@ func (g *WatGame) Bench(player *Player, fields []string) string {
 }
 
 func (g *WatGame) Riot(player *Player, fields []string) string {
+	if !g.CanAct(player, Action_Riot, int64((48 * time.Hour).Seconds())) {
+		return "Planning a riot takes time and the right circumstances. Be prepared. (nothing happens)"
+	}
 	r := g.RandInt(100)
 	reply := ""
 	if r > 30 {
@@ -402,6 +413,7 @@ func (g *WatGame) Riot(player *Player, fields []string) string {
 		player.Health -= 3
 		reply = fmt.Sprintf("The proletariat have been hunted down by the secret police and had their faces smashed in! Your rebellion fails and you lose 3HP.")
 	}
+	g.db.Act(player, Action_Riot)
 	g.db.Update(player)
 	return reply
 }

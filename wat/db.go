@@ -87,6 +87,7 @@ const (
 	Action_Mine ActionType = 1
 	Action_Rest ActionType = 2
 	Action_Lift ActionType = 3
+	Action_Riot ActionType = 4
 )
 
 type ActionType int
