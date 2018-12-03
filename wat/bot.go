@@ -121,7 +121,7 @@ func (w *WatBot) say(dest, msg string) {
 	if len(msg) == 0 {
 		return
 	}
-	fmt.Printf("MSG %s: %s\n", dest, msg)
+	//fmt.Printf("MSG %s: %s\n", dest, msg)
 	w.write("PRIVMSG", dest, msg)
 }
 

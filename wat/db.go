@@ -20,6 +20,7 @@ type Player struct {
 	LastMined  int64
 	LastRested int64
 	CoinsLost  uint64
+	Bankrupcy  int64 // how many times someone has been bankrupt
 }
 
 type Action struct {
@@ -78,7 +79,7 @@ func (w *WatDb) User(nick, host string, create bool) Player {
 
 func (w *WatDb) Update(upd ...interface{}) {
 	for _, u := range upd {
-		fmt.Printf("Updating %+v\n", u)
+		//fmt.Printf("Updating %+v\n", u)
 		w.db.Save(u)
 	}
 }

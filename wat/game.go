@@ -27,7 +27,7 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	g := WatGame{bot, db, Player{}, nil, nil}
 	g.me = g.db.User(bot.Nick, "tripsit/user/"+bot.Nick, true)
 	g.commands = map[string](func(*Player, []string) string){
-		"wat":   g.megaWat,
+		//"wat":   g.megaWat,
 		"watch": g.Watch,
 		"coins": g.Balance,
 		"send":  g.Send,
@@ -45,7 +45,6 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 		"steal": g.Steal,
 		"frame": g.Frame,
 		"punch": g.Punch,
-		"quest": g.QuestStart,
 	}
 	return &g
 }
@@ -66,8 +65,6 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 			reply = fmt.Sprintf("%s holders: %s", currency, g.TopTen())
 		case "source":
 			reply = "https://git.circuitco.de/self/watbot"
-		case "butt":
-			reply = "I LOVE BUTTS"
 		}
 	}
 	if g.lifeCommands[command] != nil {
@@ -176,16 +173,19 @@ func (g *WatGame) Roll(player *Player, fields []string) string {
 	if amount > player.Coins {
 		return "wat? brokeass"
 	}
-	n := g.RandInt(100) + 1
-	ret := fmt.Sprintf("%s rolls a 1d100... %d! ", player.Nick, n)
+	n := int64(g.RandInt(100)) + 1
+	ret := fmt.Sprintf("%s rolls the 100 sided die... %d! ", player.Nick, n)
+	if player.Nick == "vlk" {
+		n -= 5
+	}
 	if n < 50 {
 		player.Coins += amount
-		ret += fmt.Sprintf("You win! total: %d %s", player.Coins, currency)
+		ret += fmt.Sprintf("You win! ◕ ◡ ◕ total: %d %s", player.Coins, currency)
 	} else {
 		player.LoseCoins(amount)
 		g.me.Coins += amount
 		g.db.Update(g.me)
-		ret += fmt.Sprintf("You lose! %d %s left...", player.Coins, currency)
+		ret += fmt.Sprintf("You lose! ≧ヮ≦ %d %s left...", player.Coins, currency)
 	}
 	g.db.Update(player)
 	return ret
@@ -377,7 +377,6 @@ func (g *WatGame) Bench(player *Player, fields []string) string {
 	if !g.CanAct(player, Action_Lift, minTime) {
 		return "you're tired. no more lifting for now."
 	}
-	return "ok"
 	weight := g.RandInt(370) + 50
 	reps := g.RandInt(10)
 	value := int64(0)
@@ -406,9 +405,9 @@ func (g *WatGame) Riot(player *Player, fields []string) string {
 	}
 	r := g.RandInt(100)
 	reply := ""
-	if r > 30 {
-		player.Anarchy += 10
-		reply = fmt.Sprintf("You have successfully smashed the state! The brogeoise have been toppled. You're now a little more anarchistic (lv %d / exp %d)", player.Anarchy, player.Level(player.Anarchy))
+	if r > 40 {
+		player.Anarchy += 3
+		reply = fmt.Sprintf("%s has successfully smashed the state! The brogeoise have been toppled. You feel stronger...", player.Nick)
 	} else {
 		player.Health -= 3
 		reply = fmt.Sprintf("The proletariat have been hunted down by the secret police and had their faces smashed in! Your rebellion fails and you lose 3HP.")
@@ -416,11 +415,6 @@ func (g *WatGame) Riot(player *Player, fields []string) string {
 	g.db.Act(player, Action_Riot)
 	g.db.Update(player)
 	return reply
-}
-
-func (g *WatGame) QuestStart(player *Player, fields []string) string {
-	// Begin a quest with some people. It will involve multiple dice rolls.
-	return ""
 }
 
 func (g *WatGame) Send(player *Player, fields []string) string {
@@ -481,7 +475,7 @@ func (g *WatGame) Watch(player *Player, fields []string) string {
 		}
 		player = maybePlayer
 	}
-	return fmt.Sprintf("%s's Watting: %d (%d) / Strength: %d (%d) / Trickery: %d (%d) / Coins: %d / Health: %d", player.Nick, player.Level(player.Watting), player.Watting, player.Level(player.Anarchy), player.Anarchy, player.Trickery, player.Trickery, player.Coins, player.Health)
+	return fmt.Sprintf("%s's Strength: %d (%d) / Trickery: %d (%d) / Coins: %d / Health: %d", player.Nick, player.Level(player.Anarchy), player.Anarchy, player.Trickery, player.Trickery, player.Coins, player.Health)
 }
 
 func (g *WatGame) Balance(player *Player, fields []string) string {
