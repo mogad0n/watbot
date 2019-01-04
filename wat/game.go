@@ -16,7 +16,9 @@ type WatGame struct {
 	db           *WatDb
 	me           Player
 	commands     map[string](func(*Player, []string) string)
+	aliases      map[string](func(*Player, []string) string)
 	lifeCommands map[string](func(*Player, []string) string)
+	roid         map[string]int
 }
 
 var currency = "watcoin"
@@ -24,19 +26,24 @@ var currencys = "watcoins"
 var unconscious = "wat, your hands fumble and fail you. try resting, weakling."
 
 func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
-	g := WatGame{bot, db, Player{}, nil, nil}
+	g := WatGame{bot, db, Player{}, nil, nil, nil, map[string]int{}}
 	g.me = g.db.User(bot.Nick, "tripsit/user/"+bot.Nick, true)
 	g.commands = map[string](func(*Player, []string) string){
 		//"wat":   g.megaWat,
-		"watch": g.Watch,
-		"coins": g.Balance,
-		"send":  g.Send,
-		"rest":  g.Rest,
-		"leech": g.Leech,
-		"roll":  g.Roll,
+		"steroid":  g.Steroid,
+		"watch":    g.Watch,
+		"coins":    g.Balance,
+		"send":     g.Send,
+		"rest":     g.Rest,
+		"leech":    g.Leech,
+		"roll":     g.Roll,
+		"dice":     g.Dice,
+		"mine":     g.Mine,
+		"bankrupt": g.Bankrupt,
+	}
+	g.aliases = map[string](func(*Player, []string) string){
+		"sleep": g.Rest,
 		"flip":  g.Roll,
-		"dice":  g.Dice,
-		"mine":  g.Mine,
 	}
 	g.lifeCommands = map[string](func(*Player, []string) string){
 		"riot":  g.Riot,
@@ -54,11 +61,17 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 	reply := ""
 	if g.commands[command] != nil {
 		reply = g.commands[command](player, fields)
+	} else if g.aliases[command] != nil {
+		reply = g.aliases[command](player, fields)
 	} else {
 		// one liners
 		switch strings.ToLower(command) {
+		case "ping":
+			reply = ",beef"
 		case "help":
 			reply = g.help()
+		case "strongest":
+			reply = fmt.Sprintf("stronk: %s", g.Strongest())
 		case "toplost":
 			reply = fmt.Sprintf("%s losers: %s", currency, g.TopLost())
 		case "topten":
@@ -166,6 +179,9 @@ func (g *WatGame) Roll(player *Player, fields []string) string {
 	if len(fields) < 2 {
 		return fmt.Sprintf("roll <%s> pls - u must score < 50 if u want 2 win", currency)
 	}
+	if player.Nick == "vlk" {
+		return "you've had enough rolling friend. unroll it."
+	}
 	amount, e := g.Int(fields[1])
 	if e != nil {
 		return e.Error()
@@ -189,6 +205,21 @@ func (g *WatGame) Roll(player *Player, fields []string) string {
 	}
 	g.db.Update(player)
 	return ret
+}
+
+func (g *WatGame) Bankrupt(player *Player, fields []string) string {
+	if player.Coins > 10 {
+		return fmt.Sprintf("hmm, with %d %s, you're too rich. go get poor.", player.Coins, currency)
+	}
+	minTime := int64(14400)
+	if !g.CanAct(player, Action_Bankrupt, minTime) {
+		return "pity is only valid once every 4 hours"
+	}
+	player.Coins += 50
+	player.Bankrupcy += 1
+	g.db.Act(player, Action_Bankrupt)
+	g.db.Update(player)
+	return fmt.Sprintf("here's some pity money. you've been bankrupt %d times.", player.Bankrupcy)
 }
 
 func (g *WatGame) Punch(player *Player, fields []string) string {
@@ -373,7 +404,7 @@ func (g *WatGame) CanAct(player *Player, action ActionType, minTime int64) bool 
 }
 
 func (g *WatGame) Bench(player *Player, fields []string) string {
-	minTime := int64(2400)
+	minTime := int64(115200)
 	if !g.CanAct(player, Action_Lift, minTime) {
 		return "you're tired. no more lifting for now."
 	}
@@ -391,6 +422,20 @@ func (g *WatGame) Bench(player *Player, fields []string) string {
 	} else if weight == 420 {
 		value = 10
 		reply += "four twenty blaze it bro! "
+	}
+	if g.roid[player.Nick] != 0 {
+		delete(g.roid, player.Nick)
+		success := g.RandInt(2)
+		if success != 0 {
+			player.Health = 0
+			player.Anarchy -= 10
+			g.db.Act(player, Action_Lift)
+			g.db.Update(player)
+			return fmt.Sprintf("%s tried to lift %d but halfway through their %d reps, their heart literally exploded from steroid use. They are now unconscious.", player.Nick, weight, reps)
+		} else {
+			reply += fmt.Sprintf("roid rage increased the effectiveness! ")
+			value *= 2
+		}
 	}
 	g.db.Act(player, Action_Lift)
 	player.Anarchy += value
@@ -467,6 +512,14 @@ func (g *WatGame) Mine(player *Player, _ []string) string {
 	return msg
 }
 
+func (g *WatGame) Steroid(player *Player, fields []string) string {
+	if g.roid[player.Nick] != 0 {
+		return "Taking more than the recommended amount of steroids is, well, not recommended."
+	}
+	g.roid[player.Nick] = 1
+	return fmt.Sprintf("%s has eaten anabolic steroids. While they're good for building strength, it's dangerous to lift heavy weights. I hope you know what you're doing...", player.Nick)
+}
+
 func (g *WatGame) Watch(player *Player, fields []string) string {
 	if len(fields) > 1 {
 		maybePlayer, err := g.GetTarget("", fields[1])
@@ -491,6 +544,15 @@ func (g *WatGame) Balance(player *Player, fields []string) string {
 	return fmt.Sprintf(balStr, balPlayer.Nick, currency, balPlayer.Coins, time.Now().Unix()-balPlayer.LastMined, balPlayer.CoinsLost)
 }
 
+func (g *WatGame) Strongest() string {
+	players := g.db.Strongest()
+	ret := ""
+	for _, p := range players {
+		ret += PrintTwo(p.Nick, uint64(p.Anarchy))
+	}
+	return ret
+}
+
 func (g *WatGame) TopLost() string {
 	players := g.db.TopLost()
 	ret := ""
@@ -499,6 +561,7 @@ func (g *WatGame) TopLost() string {
 	}
 	return ret
 }
+
 func (g *WatGame) TopTen() string {
 	players := g.db.TopTen()
 	ret := ""

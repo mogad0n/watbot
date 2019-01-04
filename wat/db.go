@@ -85,10 +85,11 @@ func (w *WatDb) Update(upd ...interface{}) {
 }
 
 const (
-	Action_Mine ActionType = 1
-	Action_Rest ActionType = 2
-	Action_Lift ActionType = 3
-	Action_Riot ActionType = 4
+	Action_Mine     ActionType = 1
+	Action_Rest     ActionType = 2
+	Action_Lift     ActionType = 3
+	Action_Riot     ActionType = 4
+	Action_Bankrupt ActionType = 5
 )
 
 type ActionType int
@@ -107,6 +108,12 @@ func (w *WatDb) Act(player *Player, actionType ActionType) {
 		action.Performed = time.Now().Unix()
 		w.Update(&action)
 	}
+}
+
+func (w *WatDb) Strongest() []Player {
+	var user = make([]Player, 10)
+	w.db.Limit(10).Order("anarchy desc").Find(&user)
+	return user
 }
 
 func (w *WatDb) TopLost() []Player {
