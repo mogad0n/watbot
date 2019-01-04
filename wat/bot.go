@@ -11,20 +11,19 @@ import (
 type WatBot struct {
 	client *irc.Client
 	conn   *tls.Conn
+	c      *WatConfig
 	game   *WatGame
 	Db     *WatDb
 	Nick   string
 }
 
-var allowedChannels = []string{
-	"##wat",
-	"##test",
-	"##sweden",
-	"##freedom",
+type WatConfig struct {
+	PermittedChannels []string
+	IgnoredHosts      []string
 }
 
-func NewWatBot(config *irc.ClientConfig, serverConn *tls.Conn) *WatBot {
-	wat := WatBot{conn: serverConn, Nick: config.Nick}
+func NewWatBot(config *irc.ClientConfig, watConfig *WatConfig, serverConn *tls.Conn) *WatBot {
+	wat := WatBot{conn: serverConn, Nick: config.Nick, c: watConfig}
 	wat.Db = NewWatDb()
 	wat.game = NewWatGame(&wat, wat.Db)
 	config.Handler = irc.HandlerFunc(wat.HandleIrcMsg)
@@ -49,8 +48,8 @@ func (w *WatBot) Admin(m *irc.Message) bool {
 	return m.Prefix.Host == "tripsit/operator/hibs"
 }
 
-func (w *WatBot) AllowedChannel(c string) bool {
-	for _, allowed := range allowedChannels {
+func (w *WatBot) Allowed(c string, r []string) bool {
+	for _, allowed := range r {
 		if c == allowed {
 			return true
 		}
@@ -58,10 +57,26 @@ func (w *WatBot) AllowedChannel(c string) bool {
 	return false
 }
 
+func (w *WatBot) CanRespond(m *irc.Message) bool {
+	if w.Admin(m) {
+		return true
+	}
+	if w.Allowed(m.Prefix.Host, w.c.IgnoredHosts) {
+		return false
+	}
+	if !strings.Contains(m.Prefix.Host, "tripsit") {
+		return false
+	}
+	if !w.Allowed(m.Params[0], w.c.PermittedChannels) {
+		return false
+	}
+	return true
+}
+
 func (w *WatBot) Msg(m *irc.Message) {
 	// bail out if you're not yves, if you're not tripsit or if you're not in an allowed channel
 	// but if you're an admin you can do whatever
-	if m.Prefix.Host == "tripsit/user/creatonez" || !strings.Contains(m.Prefix.Host, "tripsit") || (!w.AllowedChannel(m.Params[0]) && !w.Admin(m)) {
+	if !w.CanRespond(m) {
 		return
 	}
 
