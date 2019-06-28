@@ -111,15 +111,21 @@ func (w *WatDb) Act(player *Player, actionType ActionType) {
 }
 
 func (w *WatDb) Strongest() []Player {
+	return w.GetTopColumn("anarchy")
+}
+
+func (w *WatDb) GetTopColumn(tipe string) []Player {
 	var user = make([]Player, 10)
-	w.db.Limit(10).Order("anarchy desc").Find(&user)
+	w.db.Limit(10).Order(tipe + " desc").Find(&user)
 	return user
 }
 
+func (w *WatDb) Healthiest() []Player {
+	return w.GetTopColumn("health")
+}
+
 func (w *WatDb) TopLost() []Player {
-	var user = make([]Player, 10)
-	w.db.Limit(10).Order("coins_lost desc").Find(&user)
-	return user
+	return w.GetTopColumn("coins_lost")
 }
 
 func (w *WatDb) TopTen() []Player {

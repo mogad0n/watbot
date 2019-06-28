@@ -1,0 +1,2 @@
+#!/bin/bash
+go build -o $HOME/go/bin/watbot main.go

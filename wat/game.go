@@ -12,13 +12,14 @@ import (
 )
 
 type WatGame struct {
-	bot          *WatBot
-	db           *WatDb
-	me           Player
-	commands     map[string](func(*Player, []string) string)
-	aliases      map[string](func(*Player, []string) string)
-	lifeCommands map[string](func(*Player, []string) string)
-	roid         map[string]int
+	bot            *WatBot
+	db             *WatDb
+	me             Player
+	commands       map[string](func(*Player, []string) string)
+	aliases        map[string](func(*Player, []string) string)
+	lifeCommands   map[string](func(*Player, []string) string)
+	simpleCommands []string
+	roid           map[string]int
 }
 
 var currency = "watcoin"
@@ -26,7 +27,7 @@ var currencys = "watcoins"
 var unconscious = "wat, your hands fumble and fail you. try resting, weakling."
 
 func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
-	g := WatGame{bot, db, Player{}, nil, nil, nil, map[string]int{}}
+	g := WatGame{bot, db, Player{}, nil, nil, nil, nil, map[string]int{}}
 	g.me = g.db.User(bot.Nick, "tripsit/user/"+bot.Nick, true)
 	g.commands = map[string](func(*Player, []string) string){
 		//"wat":   g.megaWat,
@@ -40,6 +41,7 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 		"dice":     g.Dice,
 		"mine":     g.Mine,
 		"bankrupt": g.Bankrupt,
+		"heal":     g.Heal,
 	}
 	g.aliases = map[string](func(*Player, []string) string){
 		"sleep": g.Rest,
@@ -48,10 +50,16 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	g.lifeCommands = map[string](func(*Player, []string) string){
 		"riot":  g.Riot,
 		"bench": g.Bench,
-		"heal":  g.Heal,
 		"steal": g.Steal,
 		"frame": g.Frame,
 		"punch": g.Punch,
+	}
+	g.simpleCommands = []string{
+		"ping",
+		"strongest",
+		"healthiest",
+		"losers",
+		"richest",
 	}
 	return &g
 }
@@ -72,9 +80,11 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 			reply = g.help()
 		case "strongest":
 			reply = fmt.Sprintf("stronk: %s", g.Strongest())
-		case "toplost":
+		case "healthiest":
+			reply = fmt.Sprintf("healthy: %s", g.Healthiest())
+		case "losers":
 			reply = fmt.Sprintf("%s losers: %s", currency, g.TopLost())
-		case "topten":
+		case "richest":
 			reply = fmt.Sprintf("%s holders: %s", currency, g.TopTen())
 		case "source":
 			reply = "https://git.circuitco.de/self/watbot"
@@ -98,6 +108,7 @@ func (g *WatGame) help() string {
 		}
 		ret += cmd
 	}
+	ret += strings.Join(g.simpleCommands, ", ")
 	for cmd, _ := range g.lifeCommands {
 		if len(ret) > 0 {
 			ret += ", "
@@ -113,7 +124,7 @@ func (g *WatGame) RandInt(max int64) uint64 {
 }
 
 func (g *WatGame) Heal(player *Player, fields []string) string {
-	multiplier := int64(5)
+	multiplier := int64(30)
 	if len(fields) < 3 {
 		return "#heal <player> <coins> - sacrifice your money to me, peasant! i might heal someone!"
 	}
@@ -177,24 +188,25 @@ func (g *WatGame) Int(str string) (uint64, error) {
 
 func (g *WatGame) Roll(player *Player, fields []string) string {
 	if len(fields) < 2 {
-		return fmt.Sprintf("roll <%s> pls - u must score < 50 if u want 2 win", currency)
-	}
-	if player.Nick == "vlk" {
-		return "you've had enough rolling friend. unroll it."
+		return fmt.Sprintf("roll <%s> pls - u must score < 50 if u want 2 win. u can also pick the dice size", currency)
 	}
 	amount, e := g.Int(fields[1])
 	if e != nil {
 		return e.Error()
 	}
+	dieSize := int64(100)
+	if len(fields) >= 3 {
+		userDieSize, e := g.Int(fields[2])
+		if e == nil && userDieSize >= 2 {
+			dieSize = int64(userDieSize)
+		}
+	}
 	if amount > player.Coins {
 		return "wat? brokeass"
 	}
-	n := int64(g.RandInt(100)) + 1
-	ret := fmt.Sprintf("%s rolls the 100 sided die... %d! ", player.Nick, n)
-	if player.Nick == "vlk" {
-		n -= 5
-	}
-	if n < 50 {
+	n := int64(g.RandInt(dieSize)) + 1
+	ret := fmt.Sprintf("%s rolls the %d sided die... %d! ", player.Nick, dieSize, n)
+	if n < dieSize/2 {
 		player.Coins += amount
 		ret += fmt.Sprintf("You win! ◕ ◡ ◕ total: %d %s", player.Coins, currency)
 	} else {
@@ -387,9 +399,14 @@ func (g *WatGame) Rest(player *Player, fields []string) string {
 		ret = fmt.Sprintf("wat were you thinking, sleeping at a time like this (%d until next rest)", minRest-delta)
 	} else {
 		value := g.RandInt(10) + 1
-		ret = fmt.Sprintf("wat a nap - have back a random amount of hitpoints (this time it's %d)", value)
+		if player.Health < -5 {
+			player.Health = 1
+			ret = fmt.Sprintf("wow ur beat up. i pity u, ur health is now 1.")
+		} else {
+			player.Health += int64(value)
+			ret = fmt.Sprintf("wat a nap - have back a random amount of hitpoints (this time it's %d, you've got %d hp)", value, player.Health)
+		}
 		player.LastRested = time.Now().Unix()
-		player.Health += int64(value)
 		g.db.Update(player)
 	}
 	return ret
@@ -528,11 +545,11 @@ func (g *WatGame) Watch(player *Player, fields []string) string {
 		}
 		player = maybePlayer
 	}
-	return fmt.Sprintf("%s's Strength: %d (%d) / Trickery: %d (%d) / Coins: %d / Health: %d", player.Nick, player.Level(player.Anarchy), player.Anarchy, player.Trickery, player.Trickery, player.Coins, player.Health)
+	return fmt.Sprintf("%s's Strength: %d (%d) / Coins: %d / Health: %d", player.Nick, player.Level(player.Anarchy), player.Anarchy, player.Coins, player.Health)
 }
 
 func (g *WatGame) Balance(player *Player, fields []string) string {
-	balStr := "%s's %s balance: %d. Mining time credit: %d. Total lost: %d."
+	balStr := "%s's %s balance: %d. Mining time credit: %d. Total lost: %d. Bankrupt %d times."
 	balPlayer := player
 	if len(fields) > 1 {
 		var err string
@@ -541,7 +558,7 @@ func (g *WatGame) Balance(player *Player, fields []string) string {
 			return err
 		}
 	}
-	return fmt.Sprintf(balStr, balPlayer.Nick, currency, balPlayer.Coins, time.Now().Unix()-balPlayer.LastMined, balPlayer.CoinsLost)
+	return fmt.Sprintf(balStr, balPlayer.Nick, currency, balPlayer.Coins, time.Now().Unix()-balPlayer.LastMined, balPlayer.CoinsLost, balPlayer.Bankrupcy)
 }
 
 func (g *WatGame) Strongest() string {
@@ -549,6 +566,15 @@ func (g *WatGame) Strongest() string {
 	ret := ""
 	for _, p := range players {
 		ret += PrintTwo(p.Nick, uint64(p.Anarchy))
+	}
+	return ret
+}
+
+func (g *WatGame) Healthiest() string {
+	players := g.db.Healthiest()
+	ret := ""
+	for _, p := range players {
+		ret += PrintTwo(p.Nick, uint64(p.Health))
 	}
 	return ret
 }

@@ -21,7 +21,7 @@ func main() {
 	watConfig := wat.WatConfig{
 		PermittedChannels: []string{
 			"##wat",
-			//"##test",
+			"##test",
 			"##sweden",
 			"##freedom",
 		},
