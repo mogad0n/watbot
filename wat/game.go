@@ -223,9 +223,9 @@ func (g *WatGame) Bankrupt(player *Player, fields []string) string {
 	if player.Coins > 10 {
 		return fmt.Sprintf("hmm, with %d %s, you're too rich. go get poor.", player.Coins, currency)
 	}
-	minTime := int64(14400)
+	minTime := int64(7200)
 	if !g.CanAct(player, Action_Bankrupt, minTime) {
-		return "pity is only valid once every 4 hours"
+		return "pity is only valid once every 2 hours"
 	}
 	player.Coins += 50
 	player.Bankrupcy += 1
