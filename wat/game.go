@@ -60,6 +60,7 @@ func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 		"healthiest",
 		"losers",
 		"richest",
+		"bankruptest",
 	}
 	return &g
 }
@@ -86,6 +87,8 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 			reply = fmt.Sprintf("%s losers: %s", currency, g.TopLost())
 		case "richest":
 			reply = fmt.Sprintf("%s holders: %s", currency, g.TopTen())
+		case "bankruptest":
+			reply = fmt.Sprintf("most indebited: %s", g.Bankrupest())
 		case "source":
 			reply = "https://git.circuitco.de/self/watbot"
 		}
@@ -584,6 +587,15 @@ func (g *WatGame) TopLost() string {
 	ret := ""
 	for _, p := range players {
 		ret += PrintTwo(p.Nick, p.CoinsLost)
+	}
+	return ret
+}
+
+func (g *WatGame) Bankrupest() string {
+	players := g.db.Bankruptest()
+	ret := ""
+	for _, p := range players {
+		ret += fmt.Sprintf("%s (%d) ", CleanNick(p.Nick), p.Bankrupcy)
 	}
 	return ret
 }

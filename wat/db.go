@@ -128,6 +128,10 @@ func (w *WatDb) TopLost() []Player {
 	return w.GetTopColumn("coins_lost")
 }
 
+func (w *WatDb) Bankruptest() []Player {
+	return w.GetTopColumn("bankrupcy")
+}
+
 func (w *WatDb) TopTen() []Player {
 	var user = make([]Player, 10)
 	w.db.Where("nick != 'watt'").Limit(10).Order("coins desc").Find(&user)
