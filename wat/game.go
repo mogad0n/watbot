@@ -88,7 +88,7 @@ func (g *WatGame) Msg(m *irc.Message, player *Player, fields []string) {
 		case "richest":
 			reply = fmt.Sprintf("%s holders: %s", currency, g.TopTen())
 		case "bankruptest":
-			reply = fmt.Sprintf("most indebited: %s", g.Bankrupest())
+			reply = fmt.Sprintf("times bankrupt: %s", g.Bankrupest())
 		case "source":
 			reply = "https://git.circuitco.de/self/watbot"
 		}
