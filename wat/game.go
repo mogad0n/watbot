@@ -204,12 +204,19 @@ func (g *WatGame) Roll(player *Player, fields []string) string {
 			dieSize = int64(userDieSize)
 		}
 	}
+	lotteryNum := int64(-1)
+	if dieSize > 100 {
+		lotteryNum = int64(g.RandInt(dieSize)) + 1
+	}
 	if amount > player.Coins {
 		return "wat? brokeass"
 	}
 	n := int64(g.RandInt(dieSize)) + 1
 	ret := fmt.Sprintf("%s rolls the %d sided die... %d! ", player.Nick, dieSize, n)
-	if n < dieSize/2 {
+	if n == lotteryNum {
+		player.Coins += player.Coins
+		ret += fmt.Sprintf("You won the wattery! Your bet was ignored, but your bank balance was doubled!")
+	} else if n < dieSize/2 {
 		player.Coins += amount
 		ret += fmt.Sprintf("You win! ◕ ◡ ◕ total: %d %s", player.Coins, currency)
 	} else {
