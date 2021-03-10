@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+        "gorm.io/gorm"
+        "gorm.io/driver/sqlite"
 )
 
 type Player struct {
@@ -15,7 +15,7 @@ type Player struct {
 	Watting    int64
 	Anarchy    int64
 	Trickery   int64
-	Coins      uint64 `gorm:"default:'100'"`
+	Coins      uint64 `gorm:"default:100"`
 	Health     int64
 	LastMined  int64
 	LastRested int64
@@ -54,12 +54,12 @@ type WatDb struct {
 
 func NewWatDb() *WatDb {
 	w := WatDb{}
-	var err error
-	w.db, err = gorm.Open("sqlite3", "wat.db")
+        var err error
+	w.db, err = gorm.Open(sqlite.Open("wat.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
-	w.db.AutoMigrate(&Action{}, &Player{})
+        w.db.AutoMigrate(&Action{}, &Player{})
 	return &w
 }
 
@@ -102,7 +102,7 @@ func (w *WatDb) LastActed(player *Player, actionType ActionType) int64 {
 
 func (w *WatDb) Act(player *Player, actionType ActionType) {
 	action := Action{player.Model.ID, actionType, time.Now().Unix()}
-	if w.db.First(&action, "type = ? AND player_id = ?", actionType, player.ID).RecordNotFound() {
+	if err := w.db.First(&action, "type = ? AND player_id = ?", actionType, player.Model.ID).Error; err != nil {
 		w.db.Create(&action)
 	} else {
 		action.Performed = time.Now().Unix()

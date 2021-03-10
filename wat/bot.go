@@ -45,7 +45,7 @@ func (w *WatBot) HandleIrcMsg(c *irc.Client, m *irc.Message) {
 }
 
 func (w *WatBot) Admin(m *irc.Message) bool {
-	return m.Prefix.Host == "tripsit/operator/hibs"
+	return m.Prefix.Host == "mph.monster"
 }
 
 func (w *WatBot) Allowed(c string, r []string) bool {
@@ -64,9 +64,9 @@ func (w *WatBot) CanRespond(m *irc.Message) bool {
 	if w.Allowed(m.Prefix.Host, w.c.IgnoredHosts) {
 		return false
 	}
-	if !strings.Contains(m.Prefix.Host, "tripsit") {
-		return false
-	}
+	// if !strings.Contains(m.Prefix.Host, "") {
+	// 	return false
+	// }
 	if !w.Allowed(m.Params[0], w.c.PermittedChannels) {
 		return false
 	}

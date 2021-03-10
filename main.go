@@ -15,15 +15,13 @@ func main() {
 	config := irc.ClientConfig{
 		Nick: "watt",
 		Pass: *pass,
-		User: "wat/tripsit",
+		User: "wat",
 		Name: "wat",
 	}
 	watConfig := wat.WatConfig{
 		PermittedChannels: []string{
-			"##wat",
-			"##test",
-			"##sweden",
-			"##freedom",
+			"#lucy",
+			"#sweden",
 		},
 		IgnoredHosts: []string{
 			"tripsit/user/creatonez",
@@ -32,7 +30,7 @@ func main() {
 	tcpConf := &tls.Config{
 		InsecureSkipVerify: true,
 	}
-	conn, err := tls.Dial("tcp", "127.0.0.1:9696", tcpConf)
+	conn, err := tls.Dial("tcp", "127.0.0.1:6697", tcpConf)
 	if err != nil {
 		fmt.Println("err " + err.Error())
 		return

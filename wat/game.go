@@ -28,7 +28,7 @@ var unconscious = "wat, your hands fumble and fail you. try resting, weakling."
 
 func NewWatGame(bot *WatBot, db *WatDb) *WatGame {
 	g := WatGame{bot, db, Player{}, nil, nil, nil, nil, map[string]int{}}
-	g.me = g.db.User(bot.Nick, "tripsit/user/"+bot.Nick, true)
+	g.me = g.db.User(bot.Nick, "amia8t89xfp8y.liberta.casa", true)
 	g.commands = map[string](func(*Player, []string) string){
 		//"wat":   g.megaWat,
 		"steroid":  g.Steroid,
